@@ -1,10 +1,3 @@
-# Deployment model
-    AWS User will subscribe to the load-gen offering and gets a cloud formation template for load-gen SaaS to deploy in their own AWS Account
-    
-    SaaS offering will include below load-gen binaries
-        1. WebUI
-        2. APIs
-        3. Workers (On Demand)
 # Infra code 
 
 ##  Resources

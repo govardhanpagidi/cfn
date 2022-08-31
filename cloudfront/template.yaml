@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Load-gen-- Cloudfront distribution with static website
+
+Parameters:
+  Region:
+    Description: Region name 
+    Type: String
+  
+Resources:
+
+  S3BucketRoot:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'load-gen-builds-pi'
+      # AccessControl: BucketOwnerFullControl
+      WebsiteConfiguration:
+        IndexDocument: 'index.html'
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketRoot
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 's3:GetObject'
+            Principal: '*'
+            Resource: !Sub '${S3BucketRoot.Arn}/*'
+  S3OAIBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Sub 'load-gen-builds-pi'
+      PolicyDocument:
+        Id: PolicyForCloudFrontPrivateContent
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              Fn::Sub: arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity
+                ${BuildBuketCloudFrontOAI}
+          Action: s3:GetObject
+          Resource:
+            - arn:aws:s3:::load-gen-builds-pi
+  BuildBuketCloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment:
+          Fn::Sub:
+          - OAI For load-gen ${UniqueId}
+          - UniqueId:
+              Fn::Select:
+              - 0
+              - Fn::Split:
+                - "-"
+                - Fn::Select:
+                  - 2
+                  - Fn::Split:
+                    - "/"
+                    - Ref: AWS::StackId
+  CloudFrontDistribution:
+    DependsOn:
+    - BuildBuketCloudFrontOAI
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          DefaultTTL: 86400
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: true
+          MaxTTL: 31536000
+          SmoothStreaming: false
+          TargetOriginId: !Sub 'S3-${AWS::StackName}'
+          ViewerProtocolPolicy: 'redirect-to-https'
+        DefaultRootObject: 'index.html'
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: false
+        
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginKeepaliveTimeout: 5
+              OriginProtocolPolicy: 'https-only'
+              OriginReadTimeout: 30
+              OriginSSLProtocols:
+                - TLSv1
+                - TLSv1.1
+                - TLSv1.2
+            DomainName: !GetAtt S3BucketRoot.DomainName
+            Id: !Sub 'S3-${AWS::StackName}'
+        PriceClass: PriceClass_All
+        

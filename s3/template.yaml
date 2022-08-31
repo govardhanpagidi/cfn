@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Media S3 buckets
+
+Resources:
+  s3avatar:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "load-gen-builds-peerislands"
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
